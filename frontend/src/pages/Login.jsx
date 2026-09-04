@@ -26,7 +26,7 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     try {
-      const res  = await fetch("http://127.0.0.1:5000/auth/login", {
+      const res = await fetch("https://ai-student-mentor-n1cb.onrender.com/auth/login", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ email, password }),
