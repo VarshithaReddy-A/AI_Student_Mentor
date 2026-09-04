@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import toast from "react-hot-toast";
 import "./ResumeAnalyzer.css";
 
@@ -110,7 +110,9 @@ export default function ResumeAnalyzer({
       });
 
       if (!res.ok) {
-        throw new Error(`Upload failed with status ${res.status}`);
+        throw new Error(
+          `Upload failed with status ${res.status}`
+        );
       }
 
       const data = await res.json();
@@ -132,13 +134,17 @@ export default function ResumeAnalyzer({
         });
 
         if (!saveRes.ok) {
-          console.log("Resume analysis succeeded, but saving failed.");
+          console.log(
+            "Resume analysis succeeded, but saving failed."
+          );
+        } else {
+          setSaved(true);
         }
-
-        setSaved(true);
       }
 
-      toast.success("Analysis complete — saved to your profile!");
+      toast.success(
+        "Analysis complete — saved to your profile!"
+      );
     } catch (error) {
       console.error("Resume analysis error:", error);
 
@@ -346,7 +352,6 @@ export default function ResumeAnalyzer({
             </div>
 
             <div className="ra-score-ring">
-
               <svg
                 viewBox="0 0 100 100"
                 className="ra-ring-svg"
@@ -379,7 +384,6 @@ export default function ResumeAnalyzer({
               <span className="ra-ring-value">
                 {result.score ?? 0}
               </span>
-
             </div>
 
             <div className="ra-score-sub">
@@ -387,26 +391,22 @@ export default function ResumeAnalyzer({
             </div>
 
             <div className="ra-score-verdict">
-
               {result.score >= 80
                 ? "Excellent — ready to apply!"
                 : result.score >= 55
                 ? "Good — a few improvements needed"
                 : "Needs work — follow the suggestions below"}
-
             </div>
           </div>
 
           {/* SKILLS DETECTED */}
           {(result.skills || []).length > 0 && (
             <div className="ra-panel">
-
               <div className="ra-panel-title">
                 ✅ Skills Detected
               </div>
 
               <div className="ra-pills">
-
                 {result.skills.map((s, i) => (
                   <span
                     key={i}
@@ -415,46 +415,37 @@ export default function ResumeAnalyzer({
                     {s}
                   </span>
                 ))}
-
               </div>
-
             </div>
           )}
 
           {/* MISSING SKILLS */}
           {(result.missing_skills || []).length > 0 && (
             <div className="ra-panel">
-
               <div className="ra-panel-title">
                 ❌ Missing Skills
               </div>
 
               <ul className="ra-list">
-
                 {result.missing_skills.map((s, i) => (
                   <li key={i}>
                     {s}
                   </li>
                 ))}
-
               </ul>
-
             </div>
           )}
 
           {/* SUGGESTIONS */}
           {(result.suggestions || []).length > 0 && (
             <div className="ra-panel">
-
               <div className="ra-panel-title">
                 💡 Suggestions
               </div>
 
               <ul className="ra-list">
-
                 {result.suggestions.map((s, i) => (
                   <li key={i}>
-
                     {s}
 
                     <a
@@ -467,33 +458,26 @@ export default function ResumeAnalyzer({
                     >
                       Learn →
                     </a>
-
                   </li>
                 ))}
-
               </ul>
-
             </div>
           )}
 
           {/* STRENGTHS */}
           {(result.strengths || []).length > 0 && (
             <div className="ra-panel">
-
               <div className="ra-panel-title">
                 ⭐ Strengths
               </div>
 
               <ul className="ra-list">
-
                 {result.strengths.map((s, i) => (
                   <li key={i}>
                     {s}
                   </li>
                 ))}
-
               </ul>
-
             </div>
           )}
 
