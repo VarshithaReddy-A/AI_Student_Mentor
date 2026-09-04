@@ -1,3 +1,5 @@
+// CareerRecommendation.jsx
+
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import "./CareerRecommendation.css";
@@ -35,7 +37,7 @@ function CareerRecommendation() {
     branch: "",
     current_year: "",
     cgpa: "",
-    skills: "",
+    skills: [],
     interests: [],
     likes_coding: "",
     likes_logic: "",
@@ -49,7 +51,14 @@ function CareerRecommendation() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
 
-  // Load user details and saved resume skills
+  const [skillInput, setSkillInput] = useState("");
+  const [skillSuggestions, setSkillSuggestions] = useState([]);
+  const [interestOpen, setInterestOpen] = useState(false);
+
+  // ============================================================
+  // LOAD USER DATA + RESUME SKILLS
+  // ============================================================
+
   useEffect(() => {
     const email = localStorage.getItem("userEmail") || "";
     const name = localStorage.getItem("userName") || "";
@@ -66,13 +75,7 @@ function CareerRecommendation() {
     fetch(
       `${API_URL}/resume/${encodeURIComponent(email)}`
     )
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error("Failed to fetch resume");
-        }
-
-        return res.json();
-      })
+      .then((res) => res.json())
       .then((data) => {
         if (
           data.found &&
@@ -81,7 +84,7 @@ function CareerRecommendation() {
         ) {
           setForm((prev) => ({
             ...prev,
-            skills: data.result.skills.join(", "),
+            skills: data.result.skills,
           }));
         }
       })
@@ -90,7 +93,10 @@ function CareerRecommendation() {
       });
   }, []);
 
-  // Handle input changes
+  // ============================================================
+  // HANDLE NORMAL INPUT CHANGES
+  // ============================================================
+
   const handleChange = (e) => {
     const { name, value } = e.target;
 
@@ -100,7 +106,10 @@ function CareerRecommendation() {
     }));
   };
 
-  // Handle interest selection
+  // ============================================================
+  // HANDLE INTERESTS
+  // ============================================================
+
   const handleInterestChange = (interest) => {
     setForm((prev) => {
       const exists = prev.interests.includes(interest);
@@ -108,22 +117,96 @@ function CareerRecommendation() {
       return {
         ...prev,
         interests: exists
-          ? prev.interests.filter(
-              (item) => item !== interest
-            )
+          ? prev.interests.filter((item) => item !== interest)
           : [...prev.interests, interest],
       };
     });
   };
 
-  // Submit career recommendation
+  // ============================================================
+  // SKILL INPUT
+  // ============================================================
+
+  const commonSkills = [
+    "Python",
+    "Java",
+    "JavaScript",
+    "React",
+    "HTML",
+    "CSS",
+    "Bootstrap",
+    "SQL",
+    "MySQL",
+    "MongoDB",
+    "Node.js",
+    "Express.js",
+    "C",
+    "C++",
+    "Machine Learning",
+    "Deep Learning",
+    "Data Science",
+    "Git",
+    "GitHub",
+    "AWS",
+    "Docker",
+    "Figma",
+  ];
+
+  const handleSkillInput = (e) => {
+    const value = e.target.value;
+
+    setSkillInput(value);
+
+    if (value.trim()) {
+      const filtered = commonSkills.filter(
+        (skill) =>
+          skill.toLowerCase().includes(value.toLowerCase()) &&
+          !form.skills.includes(skill)
+      );
+
+      setSkillSuggestions(filtered.slice(0, 6));
+    } else {
+      setSkillSuggestions([]);
+    }
+  };
+
+  const addSkill = (skill) => {
+    if (!skill.trim()) return;
+
+    if (!form.skills.includes(skill.trim())) {
+      setForm((prev) => ({
+        ...prev,
+        skills: [...prev.skills, skill.trim()],
+      }));
+    }
+
+    setSkillInput("");
+    setSkillSuggestions([]);
+  };
+
+  const removeSkill = (skill) => {
+    setForm((prev) => ({
+      ...prev,
+      skills: prev.skills.filter((item) => item !== skill),
+    }));
+  };
+
+  const handleSkillKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+
+      if (skillInput.trim()) {
+        addSkill(skillInput.trim());
+      }
+    }
+  };
+
+  // ============================================================
+  // SUBMIT CAREER RECOMMENDATION
+  // ============================================================
+
   async function handleSubmit(e) {
     e.preventDefault();
-
-    if (!form.name.trim()) {
-      toast.error("Please enter your name.");
-      return;
-    }
 
     if (!form.education.trim()) {
       toast.error("Please enter your education.");
@@ -135,13 +218,33 @@ function CareerRecommendation() {
       return;
     }
 
-    if (!form.work_style) {
-      toast.error("Please select a work preference.");
+    if (!form.current_year.trim()) {
+      toast.error("Please enter your current year.");
       return;
     }
 
     if (form.interests.length === 0) {
       toast.error("Please select at least one interest.");
+      return;
+    }
+
+    if (!form.likes_coding) {
+      toast.error("Please select your coding preference.");
+      return;
+    }
+
+    if (!form.likes_logic) {
+      toast.error("Please select your logical problem-solving preference.");
+      return;
+    }
+
+    if (!form.likes_design) {
+      toast.error("Please select your designing preference.");
+      return;
+    }
+
+    if (!form.work_style) {
+      toast.error("Please select a work preference.");
       return;
     }
 
@@ -157,16 +260,12 @@ function CareerRecommendation() {
       form.work_style === "others" &&
       !form.work_style_other.trim()
     ) {
-      toast.error(
-        "Please enter your other work preference."
-      );
+      toast.error("Please enter your other work preference.");
       return;
     }
 
     const interestList = [
-      ...form.interests.filter(
-        (interest) => interest !== "Others"
-      ),
+      ...form.interests.filter((item) => item !== "Others"),
       ...(form.interests.includes("Others") &&
       form.otherInterest.trim()
         ? [form.otherInterest.trim()]
@@ -186,11 +285,9 @@ function CareerRecommendation() {
         `${API_URL}/career-recommendation`,
         {
           method: "POST",
-
           headers: {
             "Content-Type": "application/json",
           },
-
           body: JSON.stringify({
             name: form.name,
             education: form.education,
@@ -212,8 +309,7 @@ function CareerRecommendation() {
 
       if (!res.ok) {
         toast.error(
-          data.error ||
-            "Could not get career recommendations."
+          data.error || "Could not get recommendations."
         );
         return;
       }
@@ -235,77 +331,93 @@ function CareerRecommendation() {
     }
   }
 
+  // ============================================================
+  // INTEREST DISPLAY TEXT
+  // ============================================================
+
+  const interestText =
+    form.interests.length === 0
+      ? "Select your interests"
+      : `${form.interests.length} interest${
+          form.interests.length > 1 ? "s" : ""
+        } selected`;
+
+  // ============================================================
+  // RENDER
+  // ============================================================
+
   return (
-    <div className="career-recommendation">
+    <div className="cr-page">
 
-      {/* Header */}
-      <div className="career-header">
-        <div className="career-header-icon">🎯</div>
+      {/* HEADER */}
+      <div className="cr-header">
+        <h1>🎯 Career Recommendation</h1>
 
-        <div>
-          <h1>Career Recommendation</h1>
-
-          <p>
-            Tell us about yourself and discover careers
-            that match your skills and interests.
-          </p>
-        </div>
+        <p>
+          Tell us about yourself and discover careers that
+          match your skills and interests.
+        </p>
       </div>
 
-      {/* Main Form */}
+      {/* FORM */}
       <form
+        className="cr-form"
         onSubmit={handleSubmit}
-        className="career-form"
       >
 
-        {/* Goal Selection */}
-        <div className="career-section">
-          <h2>What is your goal?</h2>
+        {/* ====================================================
+            GOAL
+        ==================================================== */}
 
-          <div className="career-goal-buttons">
+        <div>
+          <h2 className="cr-section-title">
+            What is your goal?
+          </h2>
+
+          <div className="cr-goal-row">
 
             <button
               type="button"
-              className={`career-goal-btn ${
+              className={`cr-goal-btn ${
                 goal === "job" ? "active" : ""
               }`}
               onClick={() => setGoal("job")}
             >
-              💼
-              <span>Find a Job</span>
+              💼 Find a Job
             </button>
 
             <button
               type="button"
-              className={`career-goal-btn ${
-                goal === "higher_education"
-                  ? "active"
-                  : ""
+              className={`cr-goal-btn ${
+                goal === "higher_education" ? "active" : ""
               }`}
               onClick={() =>
                 setGoal("higher_education")
               }
             >
-              🎓
-              <span>Higher Education</span>
+              🎓 Higher Education
             </button>
 
           </div>
         </div>
 
-        {/* Personal Information */}
-        <div className="career-section">
-          <h2>👤 Personal Information</h2>
+        {/* ====================================================
+            PERSONAL INFORMATION
+        ==================================================== */}
 
-          <div className="career-input-grid">
+        <div>
 
-            <div className="career-field">
-              <label htmlFor="name">
-                Name
-              </label>
+          <h2 className="cr-section-title">
+            👤 Personal Information
+          </h2>
+
+          <div className="cr-grid">
+
+            {/* NAME */}
+            <div className="cr-field">
+              <label>Name</label>
 
               <input
-                id="name"
                 type="text"
                 name="name"
                 value={form.name}
@@ -314,13 +426,13 @@ function CareerRecommendation() {
               />
             </div>
 
-            <div className="career-field">
-              <label htmlFor="education">
+            {/* EDUCATION */}
+            <div className="cr-field">
+              <label>
                 Education
               </label>
 
               <input
-                id="education"
                 type="text"
                 name="education"
                 value={form.education}
@@ -329,13 +441,11 @@ function CareerRecommendation() {
               />
             </div>
 
-            <div className="career-field">
-              <label htmlFor="branch">
-                Branch
-              </label>
+            {/* BRANCH */}
+            <div className="cr-field">
+              <label>Branch</label>
 
               <input
-                id="branch"
                 type="text"
                 name="branch"
                 value={form.branch}
@@ -344,13 +454,13 @@ function CareerRecommendation() {
               />
             </div>
 
-            <div className="career-field">
-              <label htmlFor="current_year">
+            {/* CURRENT YEAR */}
+            <div className="cr-field">
+              <label>
                 Current Year
               </label>
 
               <input
-                id="current_year"
                 type="text"
                 name="current_year"
                 value={form.current_year}
@@ -359,13 +469,13 @@ function CareerRecommendation() {
               />
             </div>
 
-            <div className="career-field">
-              <label htmlFor="cgpa">
+            {/* CGPA */}
+            <div className="cr-field">
+              <label>
                 CGPA
               </label>
 
               <input
-                id="cgpa"
                 type="text"
                 name="cgpa"
                 value={form.cgpa}
@@ -374,97 +484,197 @@ function CareerRecommendation() {
               />
             </div>
 
-            <div className="career-field career-field-full">
-              <label htmlFor="skills">
+            {/* SKILLS */}
+            <div className="cr-field cr-field-full">
+
+              <label>
                 Skills
+                <span> (Press Enter to add)</span>
               </label>
 
-              <input
-                id="skills"
-                type="text"
-                name="skills"
-                value={form.skills}
-                onChange={handleChange}
-                placeholder="e.g. Python, React, SQL, Java"
-              />
+              <div className="cr-skill-wrap">
+
+                {form.skills.map((skill) => (
+                  <span
+                    className="cr-skill-tag"
+                    key={skill}
+                  >
+                    {skill}
+
+                    <button
+                      type="button"
+                      className="cr-skill-remove"
+                      onClick={() =>
+                        removeSkill(skill)
+                      }
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+
+                <input
+                  type="text"
+                  className="cr-skill-input"
+                  value={skillInput}
+                  onChange={handleSkillInput}
+                  onKeyDown={handleSkillKeyDown}
+                  placeholder={
+                    form.skills.length === 0
+                      ? "e.g. Python, React, SQL"
+                      : "Add another skill..."
+                  }
+                />
+
+              </div>
+
+              {/* SKILL SUGGESTIONS */}
+              {skillSuggestions.length > 0 && (
+                <ul className="cr-skill-dropdown">
+
+                  {skillSuggestions.map(
+                    (skill) => (
+                      <li
+                        key={skill}
+                        className="cr-skill-dropdown-item"
+                        onClick={() =>
+                          addSkill(skill)
+                        }
+                      >
+                        {skill}
+                      </li>
+                    )
+                  )}
+
+                </ul>
+              )}
+
             </div>
 
           </div>
+
         </div>
 
-        {/* Interests */}
-        <div className="career-section">
-          <h2>💡 Select Your Interests</h2>
+        {/* ====================================================
+            INTERESTS
+        ==================================================== */}
 
-          <p className="career-section-description">
+        <div>
+
+          <h2 className="cr-section-title">
+            💡 Select Your Interests
+          </h2>
+
+          <p className="cr-section-description">
             Select all areas that interest you.
           </p>
 
-          <div className="career-interest-grid">
+          <div className="cr-field">
 
-            {INTEREST_OPTIONS.map((interest) => {
-              const selected =
-                form.interests.includes(interest);
+            <label>Interests</label>
 
-              return (
-                <label
-                  key={interest}
-                  className={`career-interest ${
-                    selected ? "selected" : ""
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selected}
-                    onChange={() =>
-                      handleInterestChange(interest)
-                    }
-                  />
+            <div
+              className={`cr-interest-trigger ${
+                interestOpen ? "open" : ""
+              }`}
+              onClick={() =>
+                setInterestOpen(!interestOpen)
+              }
+              tabIndex={0}
+            >
+              <span
+                className={
+                  form.interests.length === 0
+                    ? "cr-interest-placeholder"
+                    : "cr-interest-selected"
+                }
+              >
+                {interestText}
+              </span>
 
-                  <span className="career-checkbox">
-                    {selected ? "✓" : ""}
-                  </span>
+              <span className="cr-interest-arrow">
+                {interestOpen ? "▲" : "▼"}
+              </span>
+            </div>
 
-                  <span>{interest}</span>
-                </label>
-              );
-            })}
+            {interestOpen && (
+              <div className="cr-interest-dropdown">
+
+                {INTEREST_OPTIONS.map(
+                  (interest) => (
+                    <label
+                      className="cr-interest-option"
+                      key={interest}
+                      onClick={(e) =>
+                        e.stopPropagation()
+                      }
+                    >
+
+                      <input
+                        type="checkbox"
+                        checked={form.interests.includes(
+                          interest
+                        )}
+                        onChange={() =>
+                          handleInterestChange(
+                            interest
+                          )
+                        }
+                      />
+
+                      <span className="cr-interest-check-box"></span>
+
+                      <span>{interest}</span>
+
+                    </label>
+                  )
+                )}
+
+              </div>
+            )}
 
           </div>
 
-          {/* Other Interest */}
+          {/* OTHER INTEREST */}
           {form.interests.includes("Others") && (
-            <div className="career-other-field">
-              <label htmlFor="otherInterest">
-                Specify your interest
-              </label>
-
-              <input
-                id="otherInterest"
-                type="text"
-                name="otherInterest"
-                value={form.otherInterest}
-                onChange={handleChange}
-                placeholder="Enter your interest"
-              />
-            </div>
+            <input
+              type="text"
+              className="cr-others-input"
+              name="otherInterest"
+              value={form.otherInterest}
+              onChange={handleChange}
+              placeholder="Enter your other interest"
+            />
           )}
+
         </div>
 
-        {/* Preferences */}
-        <div className="career-section">
-          <h2>⚙️ Your Preferences</h2>
+        {/* ====================================================
+            PREFERENCES
+        ==================================================== */}
 
-          <div className="career-preference-grid">
+        <div>
 
-            {/* Coding */}
-            <div className="career-field">
-              <label htmlFor="likes_coding">
+          <h2 className="cr-section-title">
+            ⚙️ Your Preferences
+          </h2>
+
+          <div className="cr-prefs">
+
+            {/* CODING */}
+            <label
+              className={`cr-check ${
+                form.likes_coding
+                  ? "checked"
+                  : ""
+              }`}
+            >
+              <span>
                 Do you like coding?
-              </label>
+              </span>
 
               <select
-                id="likes_coding"
+                className="cr-select"
                 name="likes_coding"
                 value={form.likes_coding}
                 onChange={handleChange}
@@ -481,16 +691,22 @@ function CareerRecommendation() {
                   No
                 </option>
               </select>
-            </div>
+            </label>
 
-            {/* Logic */}
-            <div className="career-field">
-              <label htmlFor="likes_logic">
+            {/* LOGIC */}
+            <label
+              className={`cr-check ${
+                form.likes_logic
+                  ? "checked"
+                  : ""
+              }`}
+            >
+              <span>
                 Do you like logical problem solving?
-              </label>
+              </span>
 
               <select
-                id="likes_logic"
+                className="cr-select"
                 name="likes_logic"
                 value={form.likes_logic}
                 onChange={handleChange}
@@ -507,16 +723,22 @@ function CareerRecommendation() {
                   No
                 </option>
               </select>
-            </div>
+            </label>
 
-            {/* Design */}
-            <div className="career-field">
-              <label htmlFor="likes_design">
+            {/* DESIGN */}
+            <label
+              className={`cr-check ${
+                form.likes_design
+                  ? "checked"
+                  : ""
+              }`}
+            >
+              <span>
                 Do you like designing?
-              </label>
+              </span>
 
               <select
-                id="likes_design"
+                className="cr-select"
                 name="likes_design"
                 value={form.likes_design}
                 onChange={handleChange}
@@ -533,65 +755,81 @@ function CareerRecommendation() {
                   No
                 </option>
               </select>
-            </div>
-
-            {/* Work Style */}
-            <div className="career-field">
-              <label htmlFor="work_style">
-                Preferred Work Style
-              </label>
-
-              <select
-                id="work_style"
-                name="work_style"
-                value={form.work_style}
-                onChange={handleChange}
-              >
-                <option value="">
-                  Select work preference
-                </option>
-
-                {WORK_OPTIONS.map((option) => (
-                  <option
-                    key={option}
-                    value={option.toLowerCase()}
-                  >
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </div>
+            </label>
 
           </div>
 
-          {/* Other Work Style */}
-          {form.work_style === "others" && (
-            <div className="career-other-field">
-              <label htmlFor="work_style_other">
-                Specify your work preference
-              </label>
-
-              <input
-                id="work_style_other"
-                type="text"
-                name="work_style_other"
-                value={form.work_style_other}
-                onChange={handleChange}
-                placeholder="Enter your preferred work style"
-              />
-            </div>
-          )}
         </div>
 
-        {/* Submit */}
+        {/* ====================================================
+            WORK PREFERENCE
+        ==================================================== */}
+
+        <div>
+
+          <div className="cr-ws-row">
+
+            <span className="cr-ws-label">
+              Preferred Work Style
+            </span>
+
+            {WORK_OPTIONS.map(
+              (option) => {
+
+                const value =
+                  option.toLowerCase();
+
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    className={`cr-ws-btn ${
+                      form.work_style === value
+                        ? "active"
+                        : ""
+                    }`}
+                    onClick={() =>
+                      setForm((prev) => ({
+                        ...prev,
+                        work_style: value,
+                      }))
+                    }
+                  >
+                    {option}
+                  </button>
+                );
+              }
+            )}
+
+          </div>
+
+          {/* OTHER WORK STYLE */}
+          {form.work_style === "others" && (
+            <input
+              type="text"
+              className="cr-others-input"
+              name="work_style_other"
+              value={form.work_style_other}
+              onChange={handleChange}
+              placeholder="Enter your preferred work style"
+            />
+          )}
+
+        </div>
+
+        {/* ====================================================
+            SUBMIT
+        ==================================================== */}
+
         <button
           type="submit"
-          className="career-submit-btn"
+          className="cr-submit"
           disabled={loading}
         >
+
           {loading ? (
             <>
-              <span className="career-spinner"></span>
+              <span className="cr-spin"></span>
               Getting Recommendations...
             </>
           ) : (
@@ -599,162 +837,174 @@ function CareerRecommendation() {
               ✨ Get Career Recommendations
             </>
           )}
+
         </button>
 
       </form>
 
-      {/* Results */}
+      {/* ======================================================
+          RESULTS
+      ====================================================== */}
+
       {result && (
-        <div className="recommendation-result">
+        <div className="cr-results">
 
-          <div className="recommendation-result-header">
-            <h2>🎯 Career Recommendations</h2>
+          <h2>
+            🎯 Career Recommendations
+          </h2>
 
-            <p>
-              Based on your profile, interests and
-              preferences.
-            </p>
-          </div>
+          {Array.isArray(
+            result.recommendations
+          ) &&
+            result.recommendations.map(
+              (career, index) => {
 
-          {/* Optional overall message */}
-          {result.message && (
-            <div className="career-result-message">
-              {result.message}
-            </div>
-          )}
+                const match = Number(
+                  career.match ??
+                    career.match_percentage ??
+                    0
+                );
 
-          {/* Recommendation Cards */}
-          {Array.isArray(result.recommendations) &&
-          result.recommendations.length > 0 ? (
-            <div className="career-results-grid">
+                const role =
+                  career.role ||
+                  career.title ||
+                  career.career ||
+                  "Career";
 
-              {result.recommendations.map(
-                (career, index) => (
+                const reason =
+                  career.reason ||
+                  career.description ||
+                  career.explanation ||
+                  "This career matches your profile.";
+
+                const skills =
+                  career.required_skills ||
+                  career.skills ||
+                  [];
+
+                const salary =
+                  career.salary ||
+                  career.salary_range ||
+                  "Not specified";
+
+                return (
                   <div
-                    className="career-card"
+                    className="cr-card"
                     key={index}
+                    style={{
+                      "--mc":
+                        index === 0
+                          ? "#5b5ef4"
+                          : index === 1
+                          ? "#0ea5e9"
+                          : "#10b981",
+                    }}
                   >
 
-                    <div className="career-card-top">
-                      <div className="career-card-number">
-                        #{index + 1}
+                    <div className="cr-card-top">
+
+                      <div>
+                        <span className="cr-card-rank">
+                          #{index + 1}
+                        </span>
+
+                        <span className="cr-card-role">
+                          {role}
+                        </span>
                       </div>
 
-                      <div className="career-card-match">
-                        {career.match !== undefined
-                          ? `${career.match}% Match`
-                          : "Recommended"}
-                      </div>
+                      <span
+                        className="cr-match-badge"
+                        style={{
+                          color:
+                            match >= 80
+                              ? "#10b981"
+                              : match >= 60
+                              ? "#f59e0b"
+                              : "#fb7185",
+                          borderColor:
+                            match >= 80
+                              ? "rgba(16,185,129,0.4)"
+                              : match >= 60
+                              ? "rgba(245,158,11,0.4)"
+                              : "rgba(251,113,133,0.4)",
+                        }}
+                      >
+                        {match}% Match
+                      </span>
+
                     </div>
 
-                    <h3>
-                      {career.role ||
-                        career.title ||
-                        career.career ||
-                        "Career"}
-                    </h3>
+                    {/* MATCH BAR */}
+                    <div className="cr-bar-track">
+                      <div
+                        className="cr-bar-fill"
+                        style={{
+                          width: `${Math.min(
+                            Math.max(match, 0),
+                            100
+                          )}%`,
+                          background:
+                            match >= 80
+                              ? "#10b981"
+                              : match >= 60
+                              ? "#f59e0b"
+                              : "#fb7185",
+                        }}
+                      ></div>
+                    </div>
 
-                    {career.description && (
-                      <p className="career-card-description">
-                        {career.description}
-                      </p>
-                    )}
+                    {/* REASON */}
+                    <p className="cr-card-reason">
+                      {reason}
+                    </p>
 
-                    {career.match !== undefined && (
-                      <div className="career-match-section">
+                    {/* META */}
+                    <div className="cr-card-meta">
 
-                        <div className="career-match-label">
-                          <span>
-                            Career Match
-                          </span>
+                      <div className="cr-meta-item">
 
-                          <span>
-                            {career.match}%
-                          </span>
-                        </div>
+                        <span className="cr-meta-lbl">
+                          Required Skills
+                        </span>
 
-                        <div className="career-match-bar">
-                          <div
-                            className="career-match-fill"
-                            style={{
-                              width: `${Math.min(
-                                100,
-                                Math.max(
-                                  0,
-                                  Number(
-                                    career.match
-                                  ) || 0
-                                )
-                              )}%`,
-                            }}
-                          />
-                        </div>
+                        <span className="cr-meta-val">
+                          {Array.isArray(skills)
+                            ? skills.join(", ")
+                            : skills}
+                        </span>
 
                       </div>
-                    )}
 
-                    {career.required_skills && (
-                      <div className="career-card-section">
+                      <div className="cr-meta-item">
 
-                        <strong>
-                          🛠 Required Skills
-                        </strong>
+                        <span className="cr-meta-lbl">
+                          Salary
+                        </span>
 
-                        <p>
-                          {Array.isArray(
-                            career.required_skills
-                          )
-                            ? career.required_skills.join(
-                                ", "
-                              )
-                            : career.required_skills}
-                        </p>
+                        <span className="cr-meta-val cr-salary">
+                          {salary}
+                        </span>
 
                       </div>
-                    )}
 
-                    {career.salary && (
-                      <div className="career-card-section">
-
-                        <strong>
-                          💰 Salary
-                        </strong>
-
-                        <p>
-                          {career.salary}
-                        </p>
-
-                      </div>
-                    )}
-
-                    {career.reason && (
-                      <div className="career-card-section">
-
-                        <strong>
-                          💡 Why this career?
-                        </strong>
-
-                        <p>
-                          {career.reason}
-                        </p>
-
-                      </div>
-                    )}
+                    </div>
 
                   </div>
-                )
-              )}
+                );
+              }
+            )}
 
-            </div>
-          ) : (
-            <div className="career-no-results">
-              <h3>
-                No recommendations available
-              </h3>
-
-              <p>
-                Please try again with more skills and
-                interests.
+          {/* FALLBACK */}
+          {(!Array.isArray(
+            result.recommendations
+          ) ||
+            result.recommendations.length === 0) && (
+            <div className="cr-card">
+              <p className="cr-card-reason">
+                No career recommendations were
+                returned. Please try again with
+                more details.
               </p>
             </div>
           )}
