@@ -5,7 +5,7 @@ import "./SkillGapDetection.css";
 // Render backend URL
 const API_URL = "https://ai-student-mentor-n1cb.onrender.com";
 
-// All roles and their required skills (mirrors backend)
+// All roles and their required skills
 const ROLE_SKILLS = {
   "Full Stack Developer": [
     "HTML",
@@ -186,10 +186,7 @@ export default function SkillGapDetection() {
       }
     }
 
-    document.addEventListener(
-      "mousedown",
-      handleClick
-    );
+    document.addEventListener("mousedown", handleClick);
 
     return () =>
       document.removeEventListener(
@@ -220,10 +217,7 @@ export default function SkillGapDetection() {
       return;
     }
 
-    setAddedSkills((prev) => [
-      ...prev,
-      trimmed,
-    ]);
+    setAddedSkills((prev) => [...prev, trimmed]);
 
     setQuery("");
     setDropOpen(false);
@@ -258,10 +252,7 @@ export default function SkillGapDetection() {
     e.preventDefault();
 
     if (addedSkills.length === 0) {
-      toast.error(
-        "Add at least one skill first."
-      );
-
+      toast.error("Add at least one skill first.");
       return;
     }
 
@@ -269,29 +260,24 @@ export default function SkillGapDetection() {
     setResult(null);
 
     try {
-      // Render backend
-      const res = await fetch(
-        `${API_URL}/skill-gap`,
-        {
-          method: "POST",
+      const res = await fetch(`${API_URL}/skill-gap`, {
+        method: "POST",
 
-          headers: {
-            "Content-Type": "application/json",
-          },
+        headers: {
+          "Content-Type": "application/json",
+        },
 
-          body: JSON.stringify({
-            role: selectedRole,
-            skills: addedSkills,
-          }),
-        }
-      );
+        body: JSON.stringify({
+          role: selectedRole,
+          skills: addedSkills,
+        }),
+      });
 
       const data = await res.json();
 
       if (!res.ok) {
         toast.error(
-          data.error ||
-            "Skill gap analysis failed."
+          data.error || "Skill gap analysis failed."
         );
 
         return;
@@ -299,14 +285,9 @@ export default function SkillGapDetection() {
 
       setResult(data);
 
-      toast.success(
-        "Skill gap analysis done!"
-      );
+      toast.success("Skill gap analysis done!");
     } catch (error) {
-      console.error(
-        "Skill gap error:",
-        error
-      );
+      console.error("Skill gap error:", error);
 
       toast.error(
         "Could not reach the backend. Please try again."
@@ -328,9 +309,7 @@ export default function SkillGapDetection() {
     <div className="sg-page">
 
       <div className="sg-header">
-        <h1>
-          🧠 Skill Gap Detection
-        </h1>
+        <h1>🧠 Skill Gap Detection</h1>
 
         <p>
           Select a target role, add your skills,
@@ -627,8 +606,7 @@ export default function SkillGapDetection() {
           </div>
 
           {/* Known skills */}
-          {(result.known_skills || [])
-            .length > 0 && (
+          {(result.known_skills || []).length > 0 && (
             <div className="sg-panel">
 
               <div className="sg-panel-title">
@@ -654,8 +632,7 @@ export default function SkillGapDetection() {
           )}
 
           {/* Missing skills */}
-          {(result.missing_skills || [])
-            .length > 0 && (
+          {(result.missing_skills || []).length > 0 && (
             <div className="sg-panel">
 
               <div className="sg-panel-title">
@@ -681,8 +658,7 @@ export default function SkillGapDetection() {
           )}
 
           {/* Suggestions */}
-          {(result.suggestions || [])
-            .length > 0 && (
+          {(result.suggestions || []).length > 0 && (
             <div className="sg-panel">
 
               <div className="sg-panel-title">
