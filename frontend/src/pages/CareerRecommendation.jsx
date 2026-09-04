@@ -1,5 +1,3 @@
-// CareerRecommendation.jsx
-
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import "./CareerRecommendation.css";
@@ -51,14 +49,14 @@ function CareerRecommendation() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
 
-  // Load user name and saved resume skills
+  // Load user details and saved resume skills
   useEffect(() => {
     const email = localStorage.getItem("userEmail") || "";
     const name = localStorage.getItem("userName") || "";
 
     if (name) {
-      setForm((f) => ({
-        ...f,
+      setForm((prev) => ({
+        ...prev,
         name,
       }));
     }
@@ -68,16 +66,22 @@ function CareerRecommendation() {
     fetch(
       `${API_URL}/resume/${encodeURIComponent(email)}`
     )
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error("Failed to fetch resume");
+        }
+
+        return res.json();
+      })
       .then((data) => {
         if (
           data.found &&
           Array.isArray(data.result?.skills) &&
           data.result.skills.length > 0
         ) {
-          setForm((f) => ({
-            ...f,
-            skills: data.result.skills,
+          setForm((prev) => ({
+            ...prev,
+            skills: data.result.skills.join(", "),
           }));
         }
       })
@@ -96,7 +100,7 @@ function CareerRecommendation() {
     }));
   };
 
-  // Handle interests
+  // Handle interest selection
   const handleInterestChange = (interest) => {
     setForm((prev) => {
       const exists = prev.interests.includes(interest);
@@ -104,7 +108,9 @@ function CareerRecommendation() {
       return {
         ...prev,
         interests: exists
-          ? prev.interests.filter((item) => item !== interest)
+          ? prev.interests.filter(
+              (item) => item !== interest
+            )
           : [...prev.interests, interest],
       };
     });
@@ -113,6 +119,21 @@ function CareerRecommendation() {
   // Submit career recommendation
   async function handleSubmit(e) {
     e.preventDefault();
+
+    if (!form.name.trim()) {
+      toast.error("Please enter your name.");
+      return;
+    }
+
+    if (!form.education.trim()) {
+      toast.error("Please enter your education.");
+      return;
+    }
+
+    if (!form.branch.trim()) {
+      toast.error("Please enter your branch.");
+      return;
+    }
 
     if (!form.work_style) {
       toast.error("Please select a work preference.");
@@ -124,26 +145,43 @@ function CareerRecommendation() {
       return;
     }
 
-    const interestList = [
-      ...form.interests.filter((i) => i !== "Others"),
+    if (
+      form.interests.includes("Others") &&
+      !form.otherInterest.trim()
+    ) {
+      toast.error("Please enter your other interest.");
+      return;
+    }
 
-      ...(form.interests.includes("Others") && form.otherInterest
-        ? [form.otherInterest]
+    if (
+      form.work_style === "others" &&
+      !form.work_style_other.trim()
+    ) {
+      toast.error(
+        "Please enter your other work preference."
+      );
+      return;
+    }
+
+    const interestList = [
+      ...form.interests.filter(
+        (interest) => interest !== "Others"
+      ),
+      ...(form.interests.includes("Others") &&
+      form.otherInterest.trim()
+        ? [form.otherInterest.trim()]
         : []),
     ];
 
     const workStyle =
       form.work_style === "others"
-        ? form.work_style_other || "others"
+        ? form.work_style_other.trim() || "others"
         : form.work_style;
 
     setLoading(true);
     setResult(null);
 
     try {
-      // IMPORTANT:
-      // This endpoint is career-recommendation,
-      // NOT /resume
       const res = await fetch(
         `${API_URL}/career-recommendation`,
         {
@@ -174,7 +212,8 @@ function CareerRecommendation() {
 
       if (!res.ok) {
         toast.error(
-          data.error || "Could not get recommendations."
+          data.error ||
+            "Could not get career recommendations."
         );
         return;
       }
@@ -199,235 +238,530 @@ function CareerRecommendation() {
   return (
     <div className="career-recommendation">
 
-      {/* Your existing UI/form can remain here */}
+      {/* Header */}
+      <div className="career-header">
+        <div className="career-header-icon">🎯</div>
 
-      <form onSubmit={handleSubmit}>
-
-        {/* Goal */}
         <div>
-          <button
-            type="button"
-            onClick={() => setGoal("job")}
-          >
-            Find a Job
-          </button>
+          <h1>Career Recommendation</h1>
 
-          <button
-            type="button"
-            onClick={() => setGoal("higher_education")}
-          >
-            Higher Education
-          </button>
+          <p>
+            Tell us about yourself and discover careers
+            that match your skills and interests.
+          </p>
+        </div>
+      </div>
+
+      {/* Main Form */}
+      <form
+        onSubmit={handleSubmit}
+        className="career-form"
+      >
+
+        {/* Goal Selection */}
+        <div className="career-section">
+          <h2>What is your goal?</h2>
+
+          <div className="career-goal-buttons">
+
+            <button
+              type="button"
+              className={`career-goal-btn ${
+                goal === "job" ? "active" : ""
+              }`}
+              onClick={() => setGoal("job")}
+            >
+              💼
+              <span>Find a Job</span>
+            </button>
+
+            <button
+              type="button"
+              className={`career-goal-btn ${
+                goal === "higher_education"
+                  ? "active"
+                  : ""
+              }`}
+              onClick={() =>
+                setGoal("higher_education")
+              }
+            >
+              🎓
+              <span>Higher Education</span>
+            </button>
+
+          </div>
         </div>
 
-        {/* Name */}
-        <input
-          type="text"
-          name="name"
-          value={form.name}
-          onChange={handleChange}
-          placeholder="Name"
-        />
+        {/* Personal Information */}
+        <div className="career-section">
+          <h2>👤 Personal Information</h2>
 
-        {/* Education */}
-        <input
-          type="text"
-          name="education"
-          value={form.education}
-          onChange={handleChange}
-          placeholder="Education"
-        />
+          <div className="career-input-grid">
 
-        {/* Branch */}
-        <input
-          type="text"
-          name="branch"
-          value={form.branch}
-          onChange={handleChange}
-          placeholder="Branch"
-        />
+            <div className="career-field">
+              <label htmlFor="name">
+                Name
+              </label>
 
-        {/* Current Year */}
-        <input
-          type="text"
-          name="current_year"
-          value={form.current_year}
-          onChange={handleChange}
-          placeholder="Current Year"
-        />
+              <input
+                id="name"
+                type="text"
+                name="name"
+                value={form.name}
+                onChange={handleChange}
+                placeholder="Enter your name"
+              />
+            </div>
 
-        {/* CGPA */}
-        <input
-          type="text"
-          name="cgpa"
-          value={form.cgpa}
-          onChange={handleChange}
-          placeholder="CGPA"
-        />
+            <div className="career-field">
+              <label htmlFor="education">
+                Education
+              </label>
 
-        {/* Skills */}
-        <input
-          type="text"
-          name="skills"
-          value={form.skills}
-          onChange={handleChange}
-          placeholder="Skills"
-        />
+              <input
+                id="education"
+                type="text"
+                name="education"
+                value={form.education}
+                onChange={handleChange}
+                placeholder="e.g. B.Tech"
+              />
+            </div>
+
+            <div className="career-field">
+              <label htmlFor="branch">
+                Branch
+              </label>
+
+              <input
+                id="branch"
+                type="text"
+                name="branch"
+                value={form.branch}
+                onChange={handleChange}
+                placeholder="e.g. CSE"
+              />
+            </div>
+
+            <div className="career-field">
+              <label htmlFor="current_year">
+                Current Year
+              </label>
+
+              <input
+                id="current_year"
+                type="text"
+                name="current_year"
+                value={form.current_year}
+                onChange={handleChange}
+                placeholder="e.g. 2nd Year"
+              />
+            </div>
+
+            <div className="career-field">
+              <label htmlFor="cgpa">
+                CGPA
+              </label>
+
+              <input
+                id="cgpa"
+                type="text"
+                name="cgpa"
+                value={form.cgpa}
+                onChange={handleChange}
+                placeholder="e.g. 8.5"
+              />
+            </div>
+
+            <div className="career-field career-field-full">
+              <label htmlFor="skills">
+                Skills
+              </label>
+
+              <input
+                id="skills"
+                type="text"
+                name="skills"
+                value={form.skills}
+                onChange={handleChange}
+                placeholder="e.g. Python, React, SQL, Java"
+              />
+            </div>
+
+          </div>
+        </div>
 
         {/* Interests */}
-        <div>
-          <h3>Select Interests</h3>
+        <div className="career-section">
+          <h2>💡 Select Your Interests</h2>
 
-          {INTEREST_OPTIONS.map((interest) => (
-            <label key={interest}>
+          <p className="career-section-description">
+            Select all areas that interest you.
+          </p>
+
+          <div className="career-interest-grid">
+
+            {INTEREST_OPTIONS.map((interest) => {
+              const selected =
+                form.interests.includes(interest);
+
+              return (
+                <label
+                  key={interest}
+                  className={`career-interest ${
+                    selected ? "selected" : ""
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selected}
+                    onChange={() =>
+                      handleInterestChange(interest)
+                    }
+                  />
+
+                  <span className="career-checkbox">
+                    {selected ? "✓" : ""}
+                  </span>
+
+                  <span>{interest}</span>
+                </label>
+              );
+            })}
+
+          </div>
+
+          {/* Other Interest */}
+          {form.interests.includes("Others") && (
+            <div className="career-other-field">
+              <label htmlFor="otherInterest">
+                Specify your interest
+              </label>
+
               <input
-                type="checkbox"
-                checked={form.interests.includes(interest)}
-                onChange={() =>
-                  handleInterestChange(interest)
-                }
+                id="otherInterest"
+                type="text"
+                name="otherInterest"
+                value={form.otherInterest}
+                onChange={handleChange}
+                placeholder="Enter your interest"
               />
-
-              {interest}
-            </label>
-          ))}
+            </div>
+          )}
         </div>
 
-        {/* Other Interest */}
-        {form.interests.includes("Others") && (
-          <input
-            type="text"
-            name="otherInterest"
-            value={form.otherInterest}
-            onChange={handleChange}
-            placeholder="Enter your interest"
-          />
-        )}
+        {/* Preferences */}
+        <div className="career-section">
+          <h2>⚙️ Your Preferences</h2>
 
-        {/* Coding */}
-        <select
-          name="likes_coding"
-          value={form.likes_coding}
-          onChange={handleChange}
-        >
-          <option value="">Do you like coding?</option>
-          <option value="yes">Yes</option>
-          <option value="no">No</option>
-        </select>
+          <div className="career-preference-grid">
 
-        {/* Logic */}
-        <select
-          name="likes_logic"
-          value={form.likes_logic}
-          onChange={handleChange}
-        >
-          <option value="">
-            Do you like logical problem solving?
-          </option>
-          <option value="yes">Yes</option>
-          <option value="no">No</option>
-        </select>
+            {/* Coding */}
+            <div className="career-field">
+              <label htmlFor="likes_coding">
+                Do you like coding?
+              </label>
 
-        {/* Design */}
-        <select
-          name="likes_design"
-          value={form.likes_design}
-          onChange={handleChange}
-        >
-          <option value="">Do you like designing?</option>
-          <option value="yes">Yes</option>
-          <option value="no">No</option>
-        </select>
+              <select
+                id="likes_coding"
+                name="likes_coding"
+                value={form.likes_coding}
+                onChange={handleChange}
+              >
+                <option value="">
+                  Select an option
+                </option>
 
-        {/* Work preference */}
-        <select
-          name="work_style"
-          value={form.work_style}
-          onChange={handleChange}
-        >
-          <option value="">
-            Select work preference
-          </option>
+                <option value="yes">
+                  Yes
+                </option>
 
-          {WORK_OPTIONS.map((option) => (
-            <option
-              key={option}
-              value={option.toLowerCase()}
-            >
-              {option}
-            </option>
-          ))}
-        </select>
+                <option value="no">
+                  No
+                </option>
+              </select>
+            </div>
 
-        {/* Other work preference */}
-        {form.work_style === "others" && (
-          <input
-            type="text"
-            name="work_style_other"
-            value={form.work_style_other}
-            onChange={handleChange}
-            placeholder="Enter your work preference"
-          />
-        )}
+            {/* Logic */}
+            <div className="career-field">
+              <label htmlFor="likes_logic">
+                Do you like logical problem solving?
+              </label>
+
+              <select
+                id="likes_logic"
+                name="likes_logic"
+                value={form.likes_logic}
+                onChange={handleChange}
+              >
+                <option value="">
+                  Select an option
+                </option>
+
+                <option value="yes">
+                  Yes
+                </option>
+
+                <option value="no">
+                  No
+                </option>
+              </select>
+            </div>
+
+            {/* Design */}
+            <div className="career-field">
+              <label htmlFor="likes_design">
+                Do you like designing?
+              </label>
+
+              <select
+                id="likes_design"
+                name="likes_design"
+                value={form.likes_design}
+                onChange={handleChange}
+              >
+                <option value="">
+                  Select an option
+                </option>
+
+                <option value="yes">
+                  Yes
+                </option>
+
+                <option value="no">
+                  No
+                </option>
+              </select>
+            </div>
+
+            {/* Work Style */}
+            <div className="career-field">
+              <label htmlFor="work_style">
+                Preferred Work Style
+              </label>
+
+              <select
+                id="work_style"
+                name="work_style"
+                value={form.work_style}
+                onChange={handleChange}
+              >
+                <option value="">
+                  Select work preference
+                </option>
+
+                {WORK_OPTIONS.map((option) => (
+                  <option
+                    key={option}
+                    value={option.toLowerCase()}
+                  >
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+          </div>
+
+          {/* Other Work Style */}
+          {form.work_style === "others" && (
+            <div className="career-other-field">
+              <label htmlFor="work_style_other">
+                Specify your work preference
+              </label>
+
+              <input
+                id="work_style_other"
+                type="text"
+                name="work_style_other"
+                value={form.work_style_other}
+                onChange={handleChange}
+                placeholder="Enter your preferred work style"
+              />
+            </div>
+          )}
+        </div>
 
         {/* Submit */}
         <button
           type="submit"
+          className="career-submit-btn"
           disabled={loading}
         >
-          {loading
-            ? "Getting Recommendations..."
-            : "Get Career Recommendations"}
+          {loading ? (
+            <>
+              <span className="career-spinner"></span>
+              Getting Recommendations...
+            </>
+          ) : (
+            <>
+              ✨ Get Career Recommendations
+            </>
+          )}
         </button>
+
       </form>
 
-      {/* Result */}
+      {/* Results */}
       {result && (
         <div className="recommendation-result">
-          <h2>Career Recommendations</h2>
 
+          <div className="recommendation-result-header">
+            <h2>🎯 Career Recommendations</h2>
+
+            <p>
+              Based on your profile, interests and
+              preferences.
+            </p>
+          </div>
+
+          {/* Optional overall message */}
+          {result.message && (
+            <div className="career-result-message">
+              {result.message}
+            </div>
+          )}
+
+          {/* Recommendation Cards */}
           {Array.isArray(result.recommendations) &&
-            result.recommendations.map(
-              (career, index) => (
-                <div
-                  className="career-card"
-                  key={index}
-                >
-                  <h3>
-                    {career.role ||
-                      career.title ||
-                      "Career"}
-                  </h3>
+          result.recommendations.length > 0 ? (
+            <div className="career-results-grid">
 
-                  {career.match !== undefined && (
-                    <p>
-                      Match: {career.match}%
-                    </p>
-                  )}
+              {result.recommendations.map(
+                (career, index) => (
+                  <div
+                    className="career-card"
+                    key={index}
+                  >
 
-                  {career.required_skills && (
-                    <p>
-                      Required Skills:{" "}
-                      {Array.isArray(
-                        career.required_skills
-                      )
-                        ? career.required_skills.join(
-                            ", "
+                    <div className="career-card-top">
+                      <div className="career-card-number">
+                        #{index + 1}
+                      </div>
+
+                      <div className="career-card-match">
+                        {career.match !== undefined
+                          ? `${career.match}% Match`
+                          : "Recommended"}
+                      </div>
+                    </div>
+
+                    <h3>
+                      {career.role ||
+                        career.title ||
+                        career.career ||
+                        "Career"}
+                    </h3>
+
+                    {career.description && (
+                      <p className="career-card-description">
+                        {career.description}
+                      </p>
+                    )}
+
+                    {career.match !== undefined && (
+                      <div className="career-match-section">
+
+                        <div className="career-match-label">
+                          <span>
+                            Career Match
+                          </span>
+
+                          <span>
+                            {career.match}%
+                          </span>
+                        </div>
+
+                        <div className="career-match-bar">
+                          <div
+                            className="career-match-fill"
+                            style={{
+                              width: `${Math.min(
+                                100,
+                                Math.max(
+                                  0,
+                                  Number(
+                                    career.match
+                                  ) || 0
+                                )
+                              )}%`,
+                            }}
+                          />
+                        </div>
+
+                      </div>
+                    )}
+
+                    {career.required_skills && (
+                      <div className="career-card-section">
+
+                        <strong>
+                          🛠 Required Skills
+                        </strong>
+
+                        <p>
+                          {Array.isArray(
+                            career.required_skills
                           )
-                        : career.required_skills}
-                    </p>
-                  )}
+                            ? career.required_skills.join(
+                                ", "
+                              )
+                            : career.required_skills}
+                        </p>
 
-                  {career.salary && (
-                    <p>
-                      Salary: {career.salary}
-                    </p>
-                  )}
-                </div>
-              )
-            )}
+                      </div>
+                    )}
+
+                    {career.salary && (
+                      <div className="career-card-section">
+
+                        <strong>
+                          💰 Salary
+                        </strong>
+
+                        <p>
+                          {career.salary}
+                        </p>
+
+                      </div>
+                    )}
+
+                    {career.reason && (
+                      <div className="career-card-section">
+
+                        <strong>
+                          💡 Why this career?
+                        </strong>
+
+                        <p>
+                          {career.reason}
+                        </p>
+
+                      </div>
+                    )}
+
+                  </div>
+                )
+              )}
+
+            </div>
+          ) : (
+            <div className="career-no-results">
+              <h3>
+                No recommendations available
+              </h3>
+
+              <p>
+                Please try again with more skills and
+                interests.
+              </p>
+            </div>
+          )}
+
         </div>
       )}
+
     </div>
   );
 }
